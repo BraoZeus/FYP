@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — {{ 'Add Class' if mode=='create' else 'Edit Class' }}{% endblock %}
+{% block page_title %}{{ 'Add New Class' if mode=='create' else 'Edit Class' }}{% endblock %}
+{% block page_subtitle %}{{ 'Schedule a class session for the semester' if mode=='create' else 'Update ' ~ schedule.class_name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('classes.classes_list') }}"
+   class="text-[12px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">← Back to Schedule</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg anim-down">
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 shadow-sm">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <!-- Class Name -->
+                <div class="col-span-2">
+                    <label for="class_name" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Class Name</label>
+                    <input type="text" id="class_name" name="class_name" required
+                           value="{{ form_data.get('class_name', schedule.class_name if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                           placeholder="e.g. Organic Chemistry Lab">
+                </div>
+
+                <!-- Class Code -->
+                <div>
+                    <label for="class_code" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Class Code</label>
+                    <input type="text" id="class_code" name="class_code" required
+                           value="{{ form_data.get('class_code', schedule.class_code if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                           placeholder="e.g. CHEM201L">
+                </div>
+
+                <!-- Lab Room -->
+                <div>
+                    <label for="lab_room" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Lab Room</label>
+                    <input type="text" id="lab_room" name="lab_room" required
+                           value="{{ form_data.get('lab_room', schedule.lab_room if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                           placeholder="e.g. Lab A">
+                </div>
+
+                <!-- Instructor -->
+                <div class="col-span-2">
+                    <label for="instructor" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Instructor</label>
+                    <input type="text" id="instructor" name="instructor" required
+                           value="{{ form_data.get('instructor', schedule.instructor if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                           placeholder="e.g. Dr. Sarah Chen">
+                </div>
+
+                <!-- Semester -->
+                <div>
+                    <label for="semester" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Semester</label>
+                    <input type="text" id="semester" name="semester" required
+                           value="{{ form_data.get('semester', schedule.semester if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                           placeholder="e.g. Fall 2026">
+                </div>
+
+                <!-- Day of Week -->
+                <div>
+                    <label for="day_of_week" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Recurring Class Day</label>
+                    <select id="day_of_week" name="day_of_week" required
+                            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all cursor-pointer shadow-inner">
+                        <option value="">Select day</option>
+                        {% for d in days %}
+                        <option value="{{ d }}"
+                            {% if form_data.get('day_of_week', schedule.day_of_week if mode=='edit' else '') == d %}selected{% endif %}>
+                            {{ d }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Semester Start Date -->
+                <div>
+                    <label for="start_date" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" required
+                           value="{{ form_data.get('start_date', schedule.start_date.strftime('%Y-%m-%d') if (mode=='edit' and schedule.start_date) else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner">
+                </div>
+
+                <!-- Semester End Date -->
+                <div>
+                    <label for="end_date" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">End Date</label>
+                    <input type="date" id="end_date" name="end_date" required
+                           value="{{ form_data.get('end_date', schedule.end_date.strftime('%Y-%m-%d') if (mode=='edit' and schedule.end_date) else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner">
+                </div>
+
+                <!-- Intelligent Date vs Day Verification Banner -->
+                <div id="day-mismatch-banner" class="col-span-2 hidden p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs space-y-2.5">
+                    <div class="flex items-start gap-2.5">
+                        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div class="flex-1">
+                            <p class="font-bold text-amber-900 dark:text-amber-200">Date & Day Schedule Verification</p>
+                            <p class="text-amber-800 dark:text-amber-300 mt-0.5">
+                                The start date is a <strong id="mismatch-start-day">Monday</strong>, but the recurring class schedule is set to <strong id="mismatch-sched-day">Wednesday</strong>.
+                            </p>
+                            <p class="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-1">
+                                If this date is the semester opening, the first session meets on the following scheduled day. Please confirm your intended schedule:
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <button type="button" id="btn-keep-recurring" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-[11px] transition-colors shadow-sm">
+                            Keep <span id="label-keep-day">Wednesdays</span> (Semester start: <span id="label-start-day">Monday</span>)
+                        </button>
+                        <button type="button" id="btn-switch-day" class="px-3 py-1.5 bg-white dark:bg-slate-900 border border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-slate-800 rounded-lg font-medium text-[11px] transition-colors">
+                            Switch class to <span id="label-switch-day">Mondays</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="day-match-badge" class="col-span-2 hidden p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span id="day-match-text">Start date corresponds directly with recurring class schedule.</span>
+                </div>
+
+                <input type="hidden" id="confirm_day_mismatch" name="confirm_day_mismatch" value="{{ form_data.get('confirm_day_mismatch', '0') }}">
+
+                <!-- Start Time -->
+                <div>
+                    <label for="start_time" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Start Time</label>
+                    <input type="time" id="start_time" name="start_time" required
+                           value="{{ form_data.get('start_time', schedule.start_time.strftime('%H:%M') if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner">
+                </div>
+
+                <!-- End Time -->
+                <div>
+                    <label for="end_time" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">End Time</label>
+                    <input type="time" id="end_time" name="end_time" required
+                           value="{{ form_data.get('end_time', schedule.end_time.strftime('%H:%M') if mode=='edit' else '') }}"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner">
+                </div>
+            </div>
+
+            <!-- Embedded Edge AI Monitoring Rules -->
+            <div class="mb-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Edge AI Safety Triggers</p>
+                <p class="text-[11px] text-slate-500 mb-3">Configure active safety detectors enforced during this lab session.</p>
+
+                <div class="grid grid-cols-1 gap-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5">
+                    <!-- Full PPE (Face Mask, Lab Coat, Gloves) -->
+                    <label class="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/40 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50">
+                        <div>
+                            <span class="font-semibold block text-slate-900 dark:text-slate-100">Full PPE (Face Mask, Lab Coat, Gloves)</span>
+                            <span class="text-[11px] text-slate-500 block mt-0.5">Mandates protective lab coats, N95/surgical face masks, and safety gloves</span>
+                        </div>
+                        <input type="checkbox" name="monitor_full_ppe" class="rounded border-slate-300 dark:border-slate-700 text-rose-600 focus:ring-rose-500 ml-4 h-4 w-4"
+                               {% if mode == 'create' or (schedule.monitoring and (schedule.monitoring.monitor_full_ppe or (schedule.monitoring.monitor_face_mask and schedule.monitoring.monitor_lab_coat))) %}checked{% endif %}>
+                    </label>
+
+                    <!-- Laptops on Workbench -->
+                    <label class="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/40 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50">
+                        <div>
+                            <span class="font-semibold block text-slate-900 dark:text-slate-100">Laptop Detection</span>
+                            <span class="text-[11px] text-slate-500 block mt-0.5">Detects unauthorized laptop computers on chemical workbench surface</span>
+                        </div>
+                        <input type="checkbox" name="monitor_laptops" class="rounded border-slate-300 dark:border-slate-700 text-rose-600 focus:ring-rose-500 ml-4 h-4 w-4"
+                               {% if mode == 'create' or (schedule.monitoring and schedule.monitoring.monitor_laptops) %}checked{% endif %}>
+                    </label>
+
+                    <!-- Smartphones / Mobile Phones -->
+                    <label class="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-800/40 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50">
+                        <div>
+                            <span class="font-semibold block text-slate-900 dark:text-slate-100">Phone Detection</span>
+                            <span class="text-[11px] text-slate-500 block mt-0.5">Detects mobile smartphones placed on active chemical surfaces</span>
+                        </div>
+                        <input type="checkbox" name="monitor_phones" class="rounded border-slate-300 dark:border-slate-700 text-rose-600 focus:ring-rose-500 ml-4 h-4 w-4"
+                               {% if mode == 'create' or (schedule.monitoring and schedule.monitoring.monitor_phones) %}checked{% endif %}>
+                    </label>
+                </div>
+            </div>
+
+            {% if mode == 'edit' %}
+            <div class="mb-6 flex items-center justify-between bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
+                <div>
+                    <p class="text-[13px] font-bold text-slate-900 dark:text-slate-200">Active Schedule</p>
+                    <p class="text-[11px] text-slate-500">Inactive classes are hidden from automated surveillance</p>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" name="is_active" {% if schedule.is_active %}checked{% endif %}>
+                    <span class="tog-slider"></span>
+                </label>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white text-[13px] font-semibold rounded-xl shadow-md shadow-rose-900/20 transition-all active:scale-[.98]">
+                    {{ 'Add Class' if mode=='create' else 'Save Changes' }}
+                </button>
+                <a href="{{ url_for('classes.classes_list') }}" class="text-[13px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const startDateInput = document.getElementById('start_date');
+    const dayOfWeekSelect = document.getElementById('day_of_week');
+    const banner = document.getElementById('day-mismatch-banner');
+    const matchBadge = document.getElementById('day-match-badge');
+    const mismatchStartDay = document.getElementById('mismatch-start-day');
+    const mismatchSchedDay = document.getElementById('mismatch-sched-day');
+    const labelKeepDay = document.getElementById('label-keep-day');
+    const labelStartDay = document.getElementById('label-start-day');
+    const labelSwitchDay = document.getElementById('label-switch-day');
+    const btnKeepRecurring = document.getElementById('btn-keep-recurring');
+    const btnSwitchDay = document.getElementById('btn-switch-day');
+    const confirmInput = document.getElementById('confirm_day_mismatch');
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    function getStartDateDayName(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const dt = new Date(y, m, d);
+        return dayNames[dt.getDay()];
+    }
+
+    function checkDayAlignment() {
+        const startDateVal = startDateInput ? startDateInput.value : '';
+        const schedDayVal = dayOfWeekSelect ? dayOfWeekSelect.value : '';
+
+        if (!startDateVal || !schedDayVal) {
+            if (banner) banner.classList.add('hidden');
+            if (matchBadge) matchBadge.classList.add('hidden');
+            return;
+        }
+
+        const startDay = getStartDateDayName(startDateVal);
+        if (!startDay) return;
+
+        if (startDay !== schedDayVal) {
+            if (banner) banner.classList.remove('hidden');
+            if (matchBadge) matchBadge.classList.add('hidden');
+
+            if (mismatchStartDay) mismatchStartDay.textContent = startDay;
+            if (mismatchSchedDay) mismatchSchedDay.textContent = schedDayVal;
+            if (labelKeepDay) labelKeepDay.textContent = schedDayVal + 's';
+            if (labelStartDay) labelStartDay.textContent = startDay;
+            if (labelSwitchDay) labelSwitchDay.textContent = startDay + 's';
+
+            if (confirmInput && confirmInput.value === '1') {
+                if (btnKeepRecurring) {
+                    btnKeepRecurring.classList.add('ring-2', 'ring-amber-400');
+                    btnKeepRecurring.innerHTML = 'Confirmed: Keep ' + schedDayVal + 's (Semester start: ' + startDay + ')';
+                }
+            } else {
+                if (btnKeepRecurring) {
+                    btnKeepRecurring.classList.remove('ring-2', 'ring-amber-400');
+                    btnKeepRecurring.innerHTML = 'Keep <span id="label-keep-day">' + schedDayVal + 's</span> (Semester start: <span id="label-start-day">' + startDay + '</span>)';
+                }
+            }
+        } else {
+            if (banner) banner.classList.add('hidden');
+            if (matchBadge) {
+                matchBadge.classList.remove('hidden');
+                const matchText = document.getElementById('day-match-text');
+                if (matchText) matchText.textContent = 'Start date falls on a ' + startDay + ', matching recurring schedule.';
+            }
+            if (confirmInput) confirmInput.value = '1';
+        }
+    }
+
+    if (startDateInput) {
+        startDateInput.addEventListener('change', function () {
+            if (confirmInput) confirmInput.value = '0';
+            checkDayAlignment();
+        });
+    }
+
+    if (dayOfWeekSelect) {
+        dayOfWeekSelect.addEventListener('change', function () {
+            if (confirmInput) confirmInput.value = '0';
+            checkDayAlignment();
+        });
+    }
+
+    if (btnKeepRecurring) {
+        btnKeepRecurring.addEventListener('click', function () {
+            if (confirmInput) confirmInput.value = '1';
+            btnKeepRecurring.classList.add('ring-2', 'ring-amber-400');
+            const schedDayVal = dayOfWeekSelect ? dayOfWeekSelect.value : 'Scheduled Day';
+            btnKeepRecurring.innerHTML = 'Confirmed: Recurring on ' + schedDayVal + 's';
+        });
+    }
+
+    if (btnSwitchDay) {
+        btnSwitchDay.addEventListener('click', function () {
+            const startDateVal = startDateInput ? startDateInput.value : '';
+            const startDay = getStartDateDayName(startDateVal);
+            if (startDay && dayOfWeekSelect) {
+                dayOfWeekSelect.value = startDay;
+                if (confirmInput) confirmInput.value = '1';
+                checkDayAlignment();
+            }
+        });
+    }
+
+    // Run check on load
+    checkDayAlignment();
+})();
+</script>
+{% endblock %}

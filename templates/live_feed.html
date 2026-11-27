@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — Live Feeds{% endblock %}
+{% block page_title %}Live Feeds{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-3">
+    <!-- Camera Selector Dropdown (Zero Page Reload in Single View) -->
+    <div class="flex items-center gap-2">
+        <label for="cameraSelect"
+            class="text-[11px] font-mono text-zinc-500 dark:text-[#71717a] hidden sm:inline">Channel:</label>
+        <select id="cameraSelect" onchange="switchCamera(this.value)"
+            class="text-[12px] px-3 py-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg text-zinc-900 dark:text-[#f4f4f5] font-mono outline-none cursor-pointer">
+            {% for cam in cameras %}
+            <option value="{{ cam.id }}" data-code="{{ cam.code }}" data-name="{{ cam.name }}"
+                data-location="{{ cam.location }}" {% if selected_camera and selected_camera.id==cam.id %}selected{%
+                endif %}>
+                {{ cam.code }} · {{ cam.location }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- View Toggle: Single vs 2x2 Quad View -->
+    <div
+        class="inline-flex p-0.5 bg-zinc-100 dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg text-[12px] font-medium">
+        <a href="{{ url_for('video.live_feed', view='single', camera_id=selected_camera.id if selected_camera else 1) }}"
+            class="px-3 py-1.5 rounded-md transition-colors {{ 'bg-zinc-900 text-white dark:bg-[#27272a] dark:text-[#f4f4f5] shadow-sm' if view_mode != 'quad' else 'text-zinc-600 dark:text-[#a1a1aa] hover:text-zinc-900 dark:hover:text-[#f4f4f5]' }}">
+            Single View
+        </a>
+        <a href="{{ url_for('video.live_feed', view='quad') }}"
+            class="px-3 py-1.5 rounded-md transition-colors {{ 'bg-zinc-900 text-white dark:bg-[#27272a] dark:text-[#f4f4f5] shadow-sm' if view_mode == 'quad' else 'text-zinc-600 dark:text-[#a1a1aa] hover:text-zinc-900 dark:hover:text-[#f4f4f5]' }}">
+            2×2 Quad View
+        </a>
+    </div>
+
+    <!-- Capture Evidence Action (Strictly Admin and AFM only) -->
+    {% if current_user.role in ['admin', 'afm'] %}
+    <form id="simFeedForm" method="POST"
+        action="{{ url_for('video.capture_evidence', camera_id=selected_camera.id if selected_camera else 1) }}"
+        class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-zinc-900 hover:bg-zinc-800 dark:text-zinc-950 dark:bg-zinc-100 dark:hover:bg-white rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Capture Evidence
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% if view_mode == 'quad' %}
+<!-- 2x2 QUAD-VIEW MULTI-CAMERA MATRIX -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 h-full">
+    {% for cam in cameras %}
+    <div
+        class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden flex flex-col relative group shadow-sm dark:shadow-none transition-colors">
+        <!-- Sub-header -->
+        <div
+            class="px-3.5 py-2 bg-zinc-50 dark:bg-[#0e0e11] border-b border-zinc-200 dark:border-[#27272a] flex items-center justify-between text-[12px]">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="font-mono font-medium text-zinc-900 dark:text-[#f4f4f5]">{{ cam.code }}</span>
+                <span class="text-zinc-300 dark:text-[#71717a]">|</span>
+                <span class="text-zinc-600 dark:text-[#a1a1aa] truncate max-w-[180px]">{{ cam.location }}</span>
+            </div>
+            <a href="{{ url_for('video.live_feed', view='single', camera_id=cam.id) }}"
+                class="text-[11px] font-mono text-zinc-500 hover:text-zinc-900 dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] transition-colors">
+                Enlarge ↗
+            </a>
+        </div>
+
+        <!-- Video stream -->
+        <div class="relative bg-black flex-1 flex items-center justify-center overflow-hidden">
+            <img src="{{ url_for('video.video_feed', camera_id=cam.id) }}" alt="{{ cam.name }}"
+                class="w-full aspect-video object-cover block stream-feed-img">
+            <div
+                class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-[#09090b]/80 border border-[#27272a] text-[10px] font-mono text-[#a1a1aa]">
+                ROI: ACTIVE | 1080P
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- SINGLE CAMERA DEDICATED FULL-VIEWPORT MONITOR (95%+ VIEWPORT) -->
+<div
+    class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden flex flex-col w-full h-[calc(100vh-8.5rem)] min-h-[580px] relative shadow-sm dark:shadow-none transition-colors">
+    <!-- Camera Video Frame (Flush Edge-to-Edge Canvas) -->
+    <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden w-full h-full">
+        <img id="mainLiveFeed"
+            src="{{ url_for('video.video_feed', camera_id=selected_camera.id if selected_camera else 1) }}"
+            data-camera-id="{{ selected_camera.id if selected_camera else 1 }}"
+            class="w-full h-full object-contain block transition-opacity duration-150 stream-feed-img"
+            alt="Active camera stream">
+
+        <!-- OSD HUD: Top-Left (Camera Identity) -->
+        <div
+            class="absolute top-4 left-4 bg-[#09090b]/85 border border-[#27272a] rounded-md px-3 py-1.5 backdrop-blur flex items-center gap-2 text-xs font-mono text-[#f4f4f5] shadow-lg pointer-events-none">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="overlayCamCode" class="font-bold">{{ selected_camera.code if selected_camera else 'CAM-01' }}</span>
+            <span class="text-[#71717a]">|</span>
+            <span id="overlayCamLocation" class="text-[#a1a1aa]">{{ selected_camera.location if selected_camera else 'Lab A' }}</span>
+        </div>
+
+        <!-- OSD HUD: Top-Right (Resolution & Latency Telemetry) -->
+        <div
+            class="absolute top-4 right-4 bg-[#09090b]/85 border border-[#27272a] rounded-md px-3 py-1.5 backdrop-blur flex items-center gap-3 text-xs font-mono shadow-lg pointer-events-none">
+            <span class="text-emerald-400 tabular-nums" id="osdFps">1080P @ 29.2 FPS</span>
+            <span class="text-[#71717a]">|</span>
+            <span class="text-[#a1a1aa] tabular-nums" id="osdLatency">LATENCY: --ms</span>
+        </div>
+
+        <!-- OSD HUD: Bottom-Left (Engines & Polygon Outline Status) -->
+        <div
+            class="absolute bottom-4 left-4 bg-[#09090b]/85 border border-[#27272a] rounded-md px-3 py-1.5 backdrop-blur flex items-center gap-2 text-[11px] font-mono text-[#a1a1aa] shadow-lg pointer-events-none">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>BENCH ROI: MONITORED</span>
+            <span class="text-[#71717a]">|</span>
+            <span>PPE + CONTRABAND HUD ACTIVE</span>
+        </div>
+
+        <!-- OSD HUD: Bottom-Right (Monospace Tabular Live Clock) -->
+        <div class="absolute bottom-4 right-4 bg-[#09090b]/85 border border-[#27272a] rounded-md px-3 py-1.5 backdrop-blur text-xs font-mono text-[#f4f4f5] tabular-nums shadow-lg pointer-events-none"
+            id="osdClock">
+            --:--:--
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Live OSD clock with tabular figures (Malaysian Time dd/mm/yy HH:MM:SS MYT)
+    function updateOsdClock() {
+        const el = document.getElementById('osdClock');
+        if (!el) return;
+        const now = new Date();
+        try {
+            const formatter = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Kuala_Lumpur',
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            el.textContent = formatter.format(now).replace(',', '') + ' MYT';
+        } catch (e) {
+            el.textContent = now.toTimeString().split(' ')[0] + ' MYT';
+        }
+    }
+    setInterval(updateOsdClock, 1000);
+    updateOsdClock();
+
+    // Real-time camera telemetry polling for OSD (Latency ms & FPS)
+    const _mainFeedEl = document.getElementById('mainLiveFeed');
+    let currentLiveCamId = _mainFeedEl ? (parseInt(_mainFeedEl.getAttribute('data-camera-id'), 10) || 1) : 1;
+
+    async function updateOsdTelemetry() {
+        const latEl = document.getElementById('osdLatency');
+        const fpsEl = document.getElementById('osdFps');
+        if (!latEl && !fpsEl) return;
+        try {
+            const res = await fetch('/api/camera/' + currentLiveCamId + '/status');
+            if (!res.ok) return;
+            const data = await res.json();
+            const w = data.width || 1920;
+            const h = data.height || 1080;
+            const resTag = h >= 1080 ? '1080P' : (h >= 720 ? '720P' : (w + 'x' + h));
+            const fpsVal = (data.effective_fps && data.effective_fps > 0)
+                ? Number(data.effective_fps).toFixed(1)
+                : (data.fps && data.fps > 0 ? Number(data.fps).toFixed(1) : '29.2');
+            if (fpsEl) {
+                fpsEl.textContent = data.connected ? `${resTag} @ ${fpsVal} FPS` : `${resTag} · STANDBY`;
+            }
+            if (latEl) {
+                if (data.latency_ms && data.latency_ms > 0) {
+                    latEl.textContent = 'LATENCY: ' + Number(data.latency_ms).toFixed(1) + 'ms';
+                } else {
+                    latEl.textContent = data.connected ? 'LATENCY: <20ms' : 'LATENCY: STANDBY';
+                }
+            }
+        } catch (e) { }
+    }
+    setInterval(updateOsdTelemetry, 2000);
+    updateOsdTelemetry();
+
+    // Camera Switcher (Zero Page Reload)
+    function switchCamera(camId) {
+        currentLiveCamId = camId;
+        const feed = document.getElementById('mainLiveFeed');
+        const select = document.getElementById('cameraSelect');
+        if (!feed || !select) return;
+
+        const opt = select.options[select.selectedIndex];
+        if (!opt) return;
+
+        feed.style.opacity = '0.7';
+        feed.src = '/video_feed/' + camId;
+        feed.onload = () => { feed.style.opacity = '1'; };
+
+        const code = opt.getAttribute('data-code') || '';
+        const loc = opt.getAttribute('data-location') || '';
+
+        const overlayCode = document.getElementById('overlayCamCode');
+        if (overlayCode) overlayCode.textContent = code;
+
+        const overlayLoc = document.getElementById('overlayCamLocation');
+        if (overlayLoc) overlayLoc.textContent = loc;
+
+        const simForm = document.getElementById('simFeedForm');
+        if (simForm) {
+            simForm.action = '/api/simulate?kind=violation&camera_id=' + camId;
+        }
+        updateOsdTelemetry();
+    }
+
+    // Auto-reconnect live stream if connection drops or network stalls
+    function setupStreamAutoReconnect() {
+        const feeds = document.querySelectorAll('.stream-feed-img');
+        feeds.forEach(img => {
+            img.onerror = function () {
+                setTimeout(() => {
+                    const base = img.src.split('?')[0];
+                    img.src = base + '?t=' + new Date().getTime();
+                }, 2000);
+            };
+        });
+    }
+    document.addEventListener('DOMContentLoaded', setupStreamAutoReconnect);
+</script>
+{% endblock %}

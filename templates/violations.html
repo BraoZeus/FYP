@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — Violations{% endblock %}
+{% block page_title %}Violations{% endblock %}
+{% block page_subtitle %}{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  SESSION TABS: Clean Neutral Styling (No Red Background)   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 dark:border-[#27272a] pb-3">
+        <div class="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg">
+            <!-- Tab 1: Current Class Session -->
+            <a href="{{ url_for('violations.violations_list', tab='current', severity=current_severity, incident_filter=incident_filter, date_range=date_range, start_date=start_date, end_date=end_date) }}"
+               class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2
+               {% if active_tab == 'current' %}
+                   bg-zinc-900 text-white dark:bg-[#27272a] dark:text-white shadow-sm
+               {% else %}
+                   text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-white/60 dark:hover:bg-[#18181b]
+               {% endif %}">
+                Current Class Session
+                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono {% if active_tab == 'current' %}bg-zinc-800 dark:bg-zinc-700 text-zinc-200{% else %}bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400{% endif %}">
+                    {{ current_count }}
+                </span>
+            </a>
+
+            {% if current_user.role in ['admin', 'afm'] %}
+            <!-- Tab 2: Previous Classes (Pending Acknowledgement) - Restricted to AFM & Admin -->
+            <a href="{{ url_for('violations.violations_list', tab='pending', severity=current_severity, incident_filter=incident_filter, date_range=date_range, start_date=start_date, end_date=end_date) }}"
+               class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2
+               {% if active_tab == 'pending' %}
+                   bg-zinc-900 text-white dark:bg-[#27272a] dark:text-white shadow-sm
+               {% else %}
+                   text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-white/60 dark:hover:bg-[#18181b]
+               {% endif %}">
+                Previous Classes (Pending)
+                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono {% if active_tab == 'pending' %}bg-zinc-800 dark:bg-zinc-700 text-zinc-200{% else %}bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400{% endif %}">
+                    {{ pending_count }}
+                </span>
+            </a>
+
+            <!-- Tab 3: All Violations History (Archive) - Restricted to AFM & Admin -->
+            <a href="{{ url_for('violations.violations_list', tab='history', severity=current_severity, incident_filter=incident_filter, date_range=date_range, start_date=start_date, end_date=end_date) }}"
+               class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2
+               {% if active_tab == 'history' %}
+                   bg-zinc-900 text-white dark:bg-[#27272a] dark:text-white shadow-sm
+               {% else %}
+                   text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-white/60 dark:hover:bg-[#18181b]
+               {% endif %}">
+                All Violations History
+                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono {% if active_tab == 'history' %}bg-zinc-800 dark:bg-zinc-700 text-zinc-200{% else %}bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400{% endif %}">
+                    {{ history_count }}
+                </span>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Live ongoing class context tag (Only shown when a class is genuinely active) -->
+        {% if ongoing_class %}
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>ACTIVE: {{ ongoing_class.class_code }} ({{ ongoing_class.lab_room }})</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  CRITICAL EMERGENCY HAZARDS (Absorbed Box if Active)       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    {% if emergency_alerts %}
+    <div class="bg-white dark:bg-[#121215] border border-red-500/30 rounded-lg overflow-hidden shadow-sm">
+        <div class="px-4 py-2 bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-500/30 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <h3 class="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Fire &amp; Smoke Hazards</h3>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-500/15 text-red-600 dark:text-red-400 font-bold border border-red-500/20">
+                    {{ emergency_alerts|length }} Active
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if current_user.role in ['admin', 'afm'] %}
+                <form method="POST" action="{{ url_for('alerts.alert_clear_all') }}" onsubmit="return confirm('Clear and acknowledge all active emergency alerts?');" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="return_to" value="{{ request.full_path }}">
+                    <button type="submit"
+                            class="px-2.5 py-1 text-[11px] font-mono font-medium rounded bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center gap-1 shadow-sm">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Clear All Alerts
+                    </button>
+                </form>
+                {% endif %}
+                <span class="text-[11px] font-mono text-zinc-500 hidden sm:inline">Critical Emergency</span>
+            </div>
+        </div>
+        <div class="divide-y divide-zinc-200 dark:divide-zinc-800/50">
+            {% for a in emergency_alerts %}
+            <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                <div class="flex items-center gap-3 min-w-0">
+                    {% if a.image_path %}
+                    <button type="button"
+                            data-src="{{ url_for('evidence.serve_evidence', filename=a.image_path) }}"
+                            data-hazard="{{ a.alert_type|replace('_', ' ')|title }} Hazard"
+                            data-desc="{{ a.message }}"
+                            data-severity="critical"
+                            data-time="{{ a.timestamp.strftime('%d/%m/%y %H:%M:%S') if a.timestamp else '' }}"
+                            data-class="Emergency Event"
+                            data-note="{{ a.resolution_note if a.resolution_note else '' }}"
+                            data-conf="95.0"
+                            data-status="{{ a.review_status or ('confirmed' if a.is_acknowledged else 'pending') }}"
+                            data-reviewer="{{ (a.reviewed_by or a.acknowledged_by).username if (a.reviewed_by or a.acknowledged_by) else '' }}"
+                            data-cam="{{ a.camera.code if a.camera else 'CAM-01' }}"
+                            onclick="openEvidenceModalFromEl(this)"
+                            class="group relative block w-9 h-9 rounded border border-red-500/30 overflow-hidden bg-zinc-900 focus:outline-none shrink-0"
+                            title="Inspect encrypted emergency evidence">
+                        <img src="{{ url_for('evidence.serve_evidence', filename=a.image_path) }}"
+                             alt="Emergency Evidence"
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-150">
+                        <div class="absolute inset-0 bg-red-950/20 group-hover:bg-transparent transition-colors"></div>
+                    </button>
+                    {% else %}
+                    <div class="w-7 h-7 rounded bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0 text-red-500">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+                    </div>
+                    {% endif %}
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">{{ a.alert_type|replace('_', ' ') }}</span>
+                            <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.2 rounded bg-red-500/15 text-red-600 dark:text-red-400 font-bold border border-red-500/20">Critical</span>
+                            {% if a.camera %}<span class="text-[11px] font-mono text-zinc-500">| {{ a.camera.code }}</span>{% endif %}
+                        </div>
+                        <p class="text-xs text-zinc-600 dark:text-zinc-300 truncate">{{ a.message }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="text-xs font-mono text-zinc-500">{{ a.timestamp.strftime('%d/%m/%y %H:%M:%S') if a.timestamp else '' }}</span>
+                    {% if not a.is_acknowledged and current_user.role in ['admin', 'afm'] %}
+                    <button type="button"
+                            data-alert-id="{{ a.id }}"
+                            data-alert-title="{{ a.alert_type|replace('_', ' ')|title }} Hazard"
+                            data-return-to="{{ url_for('violations.violations_list', tab=active_tab, incident_filter=incident_filter) }}"
+                            onclick="openHazardAckModalFromEl(this)"
+                            class="px-2.5 py-1 text-xs font-mono font-medium rounded bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-1 shadow-sm">
+                        Resolve Hazard →
+                    </button>
+                    {% elif a.is_acknowledged %}
+                    <div class="text-[11px] font-mono inline-flex flex-col items-end gap-0.5">
+                        {% if a.review_status == 'false_positive' %}
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            False Positive
+                        </span>
+                        {% elif a.review_status == 'false_negative' %}
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            False Negative
+                        </span>
+                        {% else %}
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            Confirmed
+                        </span>
+                        {% endif %}
+                        {% if a.reviewed_by or a.acknowledged_by %}
+                        <span class="text-[9px] text-zinc-400">by {{ (a.reviewed_by or a.acknowledged_by).username }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  CONSOLIDATED SINGLE-ROW FILTER TOOLBAR                    -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-sm dark:shadow-none transition-colors">
+        <!-- Left: Consolidated Dropdown Filters -->
+        <form id="violationsFilterForm" method="GET" action="{{ url_for('violations.violations_list') }}" class="flex flex-wrap items-center gap-2.5">
+            <input type="hidden" name="tab" value="{{ active_tab }}">
+
+            <!-- 1. Type Filter Dropdown -->
+            <div class="relative">
+                <select name="incident_filter" onchange="this.form.submit()"
+                        class="appearance-none bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-600 rounded-md px-3 py-1.5 pr-7 text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors cursor-pointer">
+                    <option value="all" {% if incident_filter == 'all' %}selected{% endif %}>All Incidents</option>
+                    <option value="ppe" {% if incident_filter == 'ppe' %}selected{% endif %}>PPE Compliance</option>
+                    <option value="contraband" {% if incident_filter == 'contraband' %}selected{% endif %}>Tabletop Contraband</option>
+                    <option value="hazard" {% if incident_filter == 'hazard' %}selected{% endif %}>Fire &amp; Smoke Hazards</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+            </div>
+
+            <!-- 2. Severity Filter Dropdown -->
+            <div class="relative">
+                <select name="severity" onchange="this.form.submit()"
+                        class="appearance-none bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-600 rounded-md px-3 py-1.5 pr-7 text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors cursor-pointer">
+                    <option value="" {% if not current_severity %}selected{% endif %}>Severity: All</option>
+                    <option value="critical" {% if current_severity == 'critical' %}selected{% endif %}>Critical</option>
+                    <option value="high" {% if current_severity == 'high' %}selected{% endif %}>High</option>
+                    <option value="medium" {% if current_severity == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="low" {% if current_severity == 'low' %}selected{% endif %}>Low</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+            </div>
+
+            <!-- 3. Date Filter Dropdown -->
+            <div class="relative">
+                <select name="date_range" id="dateRangeSelect" onchange="handleDateRangeChange(this)"
+                        class="appearance-none bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-600 rounded-md px-3 py-1.5 pr-7 text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors cursor-pointer">
+                    <option value="today" {% if date_range == 'today' %}selected{% endif %}>Date: Today</option>
+                    <option value="7d" {% if date_range == '7d' or not date_range %}selected{% endif %}>Date: Last 7 Days</option>
+                    <option value="30d" {% if date_range == '30d' %}selected{% endif %}>Date: Last 30 Days</option>
+                    <option value="all" {% if date_range == 'all' %}selected{% endif %}>Date: All Time</option>
+                    <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Date: Custom Range...</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+            </div>
+
+            <!-- Inline Custom Date Range (Revealed if custom selected) -->
+            <div id="customDateInputs" class="{% if date_range != 'custom' %}hidden{% endif %} flex items-center gap-1.5">
+                <input type="date" name="start_date" value="{{ start_date }}"
+                       class="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] rounded px-2 py-1 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none">
+                <span class="text-zinc-400 text-xs">to</span>
+                <input type="date" name="end_date" value="{{ end_date }}"
+                       class="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] rounded px-2 py-1 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none">
+                <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-100 transition-colors">
+                    Apply
+                </button>
+            </div>
+        </form>
+
+        <!-- Right: Actions (Clear All & Export CSV) -->
+        <div class="flex items-center gap-2">
+            {% if active_tab in ['current', 'pending'] and violations.items|length > 0 and current_user.role in ['admin', 'afm'] %}
+            <form method="POST" action="{{ url_for('violations.violations_clear_all') }}" data-confirm-msg="Acknowledge and archive all unacknowledged {% if incident_filter == 'ppe' %}PPE{% elif incident_filter == 'contraband' %}tabletop contraband{% elif incident_filter == 'hazard' %}hazard{% endif %} violations in this tab?" onsubmit="return confirm(this.dataset.confirmMsg);" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="tab" value="{{ active_tab }}">
+                <input type="hidden" name="incident_filter" value="{{ incident_filter }}">
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-zinc-50 hover:bg-zinc-100 dark:bg-[#18181b] dark:hover:bg-[#222226] text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-[#27272a] transition-colors shadow-sm dark:shadow-none"
+                        title="Acknowledge and archive unacknowledged violations in the current view">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if incident_filter == 'ppe' %}Clear PPE Alerts
+                    {% elif incident_filter == 'contraband' %}Clear Tabletop Alerts
+                    {% elif incident_filter == 'hazard' %}Clear Hazard Alerts
+                    {% else %}Clear All
+                    {% endif %}
+                </button>
+            </form>
+            {% endif %}
+
+            {% if current_user.role in ['admin', 'afm'] %}
+            <a href="{{ url_for('violations.export_violations', tab=active_tab, incident_filter=incident_filter, severity=current_severity, date_range=date_range, start_date=start_date, end_date=end_date) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-zinc-50 hover:bg-zinc-100 dark:bg-[#18181b] dark:hover:bg-[#222226] text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-[#27272a] transition-colors shadow-sm dark:shadow-none"
+               title="Download filtered violation records as forensic CSV">
+                <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Export CSV
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  VIOLATIONS TABLE (Utilitarian Flat 1px Border)            -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden shadow-sm dark:shadow-none transition-colors">
+        <!-- Table Header -->
+        <div class="grid grid-cols-12 gap-3 px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-[#71717a] bg-zinc-50 dark:bg-[#0e0e11]">
+            <div class="col-span-1">Evidence</div>
+            <div class="col-span-3">Infraction Type</div>
+            <div class="col-span-2">Severity &amp; Conf.</div>
+            <div class="col-span-2">Session / Cam</div>
+            <div class="col-span-2">Timestamp</div>
+            <div class="col-span-2 text-right">Status / Review</div>
+        </div>
+
+        {% for v in violations.items %}
+        <div class="grid grid-cols-12 gap-3 items-center px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a]/60 hover:bg-zinc-50 dark:hover:bg-[#18181b]/50 transition-colors text-xs">
+            <!-- Evidence Thumbnail -->
+            <div class="col-span-1">
+                {% if v.image_path %}
+                <button type="button"
+                        data-src="{{ url_for('evidence.serve_evidence', filename=v.image_path) }}"
+                        data-hazard="{{ v.hazard_type }}"
+                        data-desc="{{ v.hazard_type }}"
+                        data-severity="{{ v.severity }}"
+                        data-time="{{ v.timestamp.strftime('%d/%m/%y %H:%M:%S') if v.timestamp else '' }}"
+                        data-class="{{ v.class_schedule.class_code if v.class_schedule else 'General Lab' }}"
+                        data-note="{{ v.resolution_note if v.resolution_note else '' }}"
+                        data-conf="{{ '%.1f'|format(v.confidence_score * 100) if v.confidence_score is not none else 'N/A' }}"
+                        data-status="{{ v.review_status or 'pending' }}"
+                        data-reviewer="{{ (v.reviewed_by or v.acknowledged_by).username if (v.reviewed_by or v.acknowledged_by) else '' }}"
+                        data-cam="{{ v.camera.code if v.camera else 'CAM-01' }}"
+                        onclick="openEvidenceModalFromEl(this)"
+                        class="group relative block focus:outline-none" title="View cryptographic evidence">
+                    <img src="{{ url_for('evidence.serve_evidence', filename=v.image_path) }}" alt="Evidence" class="w-10 h-10 rounded object-cover border border-zinc-200 dark:border-[#27272a] group-hover:border-zinc-400 dark:group-hover:border-zinc-500 transition-colors">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity">
+                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                </button>
+                {% else %}
+                <div class="w-10 h-10 rounded bg-zinc-100 dark:bg-[#18181b] flex items-center justify-center border border-zinc-200 dark:border-[#27272a] text-zinc-400 dark:text-[#71717a]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Infraction Type -->
+            <div class="col-span-3 min-w-0 pr-2">
+                <p class="text-xs font-semibold text-zinc-900 dark:text-[#f4f4f5] truncate">{{ v.hazard_type }}</p>
+                {% if v.is_acknowledged and v.resolution_note %}
+                <p class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate mt-0.5" title="Note: {{ v.resolution_note }}">
+                    Note: {{ v.resolution_note }}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Severity & Confidence -->
+            <div class="col-span-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-[#18181b] text-zinc-700 dark:text-[#e4e4e7] border border-zinc-200 dark:border-[#3f3f46]">
+                        {{ v.severity }}
+                    </span>
+                    {% if v.confidence_score is not none %}
+                    <span class="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                        {{ "%.1f"|format(v.confidence_score * 100) }}%
+                    </span>
+                    {% endif %}
+                </div>
+                {% if v.camera %}
+                <div class="text-[10px] text-zinc-400 dark:text-[#71717a] font-mono mt-0.5">
+                    {{ v.camera.code }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Session / Lab Room -->
+            <div class="col-span-2 min-w-0">
+                {% if v.class_schedule %}
+                <p class="text-xs font-medium text-zinc-800 dark:text-zinc-200 font-mono">{{ v.class_schedule.class_code }}</p>
+                <p class="text-[10px] text-zinc-500 dark:text-zinc-400">{{ v.class_schedule.lab_room }}</p>
+                {% else %}
+                <p class="text-xs text-zinc-600 dark:text-zinc-400">General Lab</p>
+                <p class="text-[10px] text-zinc-400 dark:text-zinc-500">Zone Alpha</p>
+                {% endif %}
+            </div>
+
+            <!-- Timestamp -->
+            <div class="col-span-2 text-xs font-mono">
+                <p class="text-zinc-800 dark:text-zinc-200">{{ v.timestamp.strftime('%d/%m/%y') if v.timestamp else '' }}</p>
+                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">{{ v.timestamp.strftime('%H:%M:%S') if v.timestamp else '' }}</p>
+            </div>
+
+            <!-- Action / Status -->
+            <div class="col-span-2 text-right">
+                {% if v.is_acknowledged %}
+                <div class="text-[11px] font-mono inline-flex flex-col items-end gap-0.5">
+                    {% if v.review_status == 'false_positive' %}
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                        False Positive
+                    </span>
+                    {% elif v.review_status == 'false_negative' %}
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                        False Negative
+                    </span>
+                    {% else %}
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                        Confirmed
+                    </span>
+                    {% endif %}
+
+                    {% if v.reviewed_by or v.acknowledged_by %}
+                    <span class="text-[9px] text-zinc-400">by {{ (v.reviewed_by or v.acknowledged_by).username }}</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <button type="button"
+                        data-vid="{{ v.id }}"
+                        data-hazard="{{ v.hazard_type }}"
+                        data-tab="{{ active_tab }}"
+                        data-conf="{{ '%.1f'|format(v.confidence_score * 100) if v.confidence_score is not none else '' }}"
+                        onclick="openAckModalFromEl(this)"
+                        class="px-2.5 py-1 text-xs font-mono font-medium text-zinc-700 dark:text-zinc-200 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#18181b] dark:hover:bg-[#222226] border border-zinc-200 dark:border-[#27272a] rounded transition-colors">
+                    Review →
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <!-- Polished Empty State (Centered, minimal vertical padding) -->
+        <div class="py-12 px-4 text-center">
+            <div class="w-10 h-10 rounded-full bg-zinc-100 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] flex items-center justify-center text-zinc-400 mx-auto mb-2.5">
+                <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h4 class="text-xs font-semibold text-zinc-900 dark:text-[#f4f4f5] mb-1">
+                No active infractions detected
+            </h4>
+            <p class="text-[11px] text-zinc-500 dark:text-[#71717a] max-w-sm mx-auto">
+                {% if active_tab == 'current' %}
+                No safety violations logged during this laboratory session.
+                {% elif active_tab == 'pending' %}
+                All past sessions have been reviewed and acknowledged.
+                {% else %}
+                No infraction records found matching the active filter criteria.
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination Controls (Compact & Clean) -->
+    {% if violations.pages > 1 %}
+    <div class="flex items-center justify-between text-xs font-mono text-zinc-500 dark:text-[#71717a] pt-1">
+        <div>
+            Page {{ violations.page }} of {{ violations.pages }} ({{ violations.total }} records)
+        </div>
+        <div class="flex items-center gap-1.5">
+            {% if violations.has_prev %}
+            <a href="{{ url_for('violations.violations_list', page=violations.prev_num, tab=active_tab, severity=current_severity, date_range=date_range, start_date=start_date, end_date=end_date, incident_filter=incident_filter) }}"
+               class="px-2.5 py-1 text-xs rounded bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-[#18181b] transition-colors">
+                ← Prev
+            </a>
+            {% endif %}
+
+            {% if violations.has_next %}
+            <a href="{{ url_for('violations.violations_list', page=violations.next_num, tab=active_tab, severity=current_severity, date_range=date_range, start_date=start_date, end_date=end_date, incident_filter=incident_filter) }}"
+               class="px-2.5 py-1 text-xs rounded bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-[#18181b] transition-colors">
+                Next →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ─── Interactive Acknowledgment & Review Modal ─── -->
+<div id="ackModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4 transition-all">
+    <div class="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg max-w-md w-full p-5 shadow-2xl">
+        <div class="flex items-center justify-between mb-3 border-b border-zinc-200 dark:border-[#27272a] pb-2.5">
+            <h3 id="ackModalTitle" class="text-xs font-semibold text-zinc-900 dark:text-[#f4f4f5] uppercase tracking-wider">
+                Review &amp; Acknowledge Infraction
+            </h3>
+            <button onclick="closeAckModal()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-white p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="ackForm" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="tab" id="ackTabInput" value="current">
+            <input type="hidden" name="return_to" id="ackReturnToInput" value="">
+
+            <div class="p-3 bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] rounded-md mb-3 text-xs">
+                <p id="ackHazardPrompt" class="text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed"></p>
+                <div id="ackConfPrompt" class="mt-1 flex items-center gap-2 text-[11px] text-zinc-500 font-mono"></div>
+            </div>
+
+            <!-- Review Classification Radios -->
+            <div class="mb-3">
+                <label class="block text-[11px] font-mono text-zinc-500 uppercase tracking-wider mb-1.5">
+                    Review Classification:
+                </label>
+                {% if current_user.role in ['admin', 'afm'] %}
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="cursor-pointer border border-zinc-200 dark:border-[#27272a] rounded-md p-2 text-center flex flex-col items-center gap-1 transition-all has-[:checked]:border-zinc-900 dark:has-[:checked]:border-zinc-100 has-[:checked]:bg-zinc-100 dark:has-[:checked]:bg-[#18181b] hover:border-zinc-400">
+                        <input type="radio" name="review_status" value="confirmed" checked class="hidden">
+                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Confirmed</span>
+                        <span class="text-[9px] text-zinc-500" id="ackConfirmedSub">Valid breach</span>
+                    </label>
+
+                    <label class="cursor-pointer border border-zinc-200 dark:border-[#27272a] rounded-md p-2 text-center flex flex-col items-center gap-1 transition-all has-[:checked]:border-zinc-900 dark:has-[:checked]:border-zinc-100 has-[:checked]:bg-zinc-100 dark:has-[:checked]:bg-[#18181b] hover:border-zinc-400">
+                        <input type="radio" name="review_status" value="false_positive" class="hidden">
+                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">False Positive</span>
+                        <span class="text-[9px] text-zinc-500">Misdetection</span>
+                    </label>
+
+                    <label class="cursor-pointer border border-zinc-200 dark:border-[#27272a] rounded-md p-2 text-center flex flex-col items-center gap-1 transition-all has-[:checked]:border-zinc-900 dark:has-[:checked]:border-zinc-100 has-[:checked]:bg-zinc-100 dark:has-[:checked]:bg-[#18181b] hover:border-zinc-400">
+                        <input type="radio" name="review_status" value="false_negative" class="hidden">
+                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Borderline</span>
+                        <span class="text-[9px] text-zinc-500">Questionable</span>
+                    </label>
+                </div>
+                {% else %}
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="cursor-pointer border border-zinc-200 dark:border-[#27272a] rounded-md p-2 text-center flex flex-col items-center gap-1 transition-all has-[:checked]:border-zinc-900 dark:has-[:checked]:border-zinc-100 has-[:checked]:bg-zinc-100 dark:has-[:checked]:bg-[#18181b] hover:border-zinc-400">
+                        <input type="radio" name="review_status" value="false_positive" checked class="hidden">
+                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">False Positive</span>
+                        <span class="text-[9px] text-zinc-500">Flag misdetection</span>
+                    </label>
+
+                    <label class="cursor-pointer border border-zinc-200 dark:border-[#27272a] rounded-md p-2 text-center flex flex-col items-center gap-1 transition-all has-[:checked]:border-zinc-900 dark:has-[:checked]:border-zinc-100 has-[:checked]:bg-zinc-100 dark:has-[:checked]:bg-[#18181b] hover:border-zinc-400">
+                        <input type="radio" name="review_status" value="false_negative" class="hidden">
+                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Acknowledge &amp; Silence</span>
+                        <span class="text-[9px] text-zinc-500">Triage alert</span>
+                    </label>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label for="resolutionNoteInput" class="block text-[11px] font-mono text-zinc-500 uppercase tracking-wider mb-1">
+                    Resolution Note (Optional):
+                </label>
+                <textarea id="resolutionNoteInput" name="resolution_note" rows="2"
+                          placeholder="e.g., Instructed student to wear lab coat; corrected."
+                          class="w-full bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] rounded-md px-3 py-1.5 text-xs text-zinc-900 dark:text-[#f4f4f5] focus:outline-none focus:border-zinc-400"></textarea>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeAckModal()"
+                        class="flex-1 py-1.5 px-3 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-md transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" id="ackSubmitBtn"
+                        class="flex-1 py-1.5 px-3 text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600 rounded-md transition-colors">
+                    Confirm &amp; Archive
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ─── Photographic Evidence Lightbox Modal ─── -->
+<div id="evidenceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 backdrop-blur-sm p-4 transition-all">
+    <div class="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg max-w-2xl w-full overflow-hidden shadow-2xl">
+        <div class="px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] flex items-center justify-between bg-zinc-50 dark:bg-[#0e0e11]">
+            <div class="flex items-center gap-2">
+                <span id="modalSeverity" class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"></span>
+                <h3 id="modalHazard" class="text-xs font-semibold text-zinc-900 dark:text-[#f4f4f5]"></h3>
+            </div>
+            <button onclick="closeEvidenceModal()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-white p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="p-4 bg-black flex items-center justify-center max-h-[420px] overflow-hidden">
+            <img id="modalImage" src="" alt="Capture Evidence" class="max-h-[380px] w-auto rounded object-contain">
+        </div>
+
+        <div class="px-4 py-3 bg-zinc-50 dark:bg-[#0e0e11] border-t border-zinc-200 dark:border-[#27272a] flex flex-wrap items-center justify-between text-xs text-zinc-500 gap-2">
+            <div>
+                <p id="modalDesc" class="text-xs text-zinc-800 dark:text-zinc-200 font-medium"></p>
+                <p class="text-[11px] text-zinc-400 font-mono mt-0.5">
+                    Feed: <span id="modalCamera"></span> · Class: <span id="modalClass"></span> · Time: <span id="modalTime"></span>
+                </p>
+            </div>
+            <button onclick="closeEvidenceModal()" class="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs rounded transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleDateRangeChange(selectElem) {
+    const customDiv = document.getElementById('customDateInputs');
+    if (selectElem.value === 'custom') {
+        customDiv.classList.remove('hidden');
+    } else {
+        customDiv.classList.add('hidden');
+        selectElem.form.submit();
+    }
+}
+
+function openAckModal(vid, hazard, currentTab, confScore) {
+    const modal = document.getElementById('ackModal');
+    const form = document.getElementById('ackForm');
+    const title = document.getElementById('ackModalTitle');
+    const prompt = document.getElementById('ackHazardPrompt');
+    const confPrompt = document.getElementById('ackConfPrompt');
+    const tabInput = document.getElementById('ackTabInput');
+    const returnToInput = document.getElementById('ackReturnToInput');
+    const noteInput = document.getElementById('resolutionNoteInput');
+    const confirmedSub = document.getElementById('ackConfirmedSub');
+    const submitBtn = document.getElementById('ackSubmitBtn');
+
+    form.action = `/violations/${vid}/acknowledge`;
+    tabInput.value = currentTab || 'current';
+    if (returnToInput) returnToInput.value = '';
+    if (title) title.innerText = 'Review & Acknowledge Infraction';
+    prompt.innerHTML = `Reviewing <strong>${escapeHtml(hazard)}</strong> (Log #${vid}).`;
+    confPrompt.innerText = confScore ? `AI Confidence: ${confScore}%` : '';
+    if (confirmedSub) confirmedSub.innerText = 'Valid breach';
+    if (submitBtn) submitBtn.innerText = 'Confirm & Archive';
+    if (noteInput) {
+        noteInput.value = '';
+        noteInput.placeholder = 'e.g., Instructed student to wear lab coat; corrected.';
+    }
+
+    const confirmedRadio = form.querySelector('input[name="review_status"][value="confirmed"]');
+    if (confirmedRadio) confirmedRadio.checked = true;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function openHazardAckModal(alertId, alertTitle, returnTo, confScore) {
+    const modal = document.getElementById('ackModal');
+    const form = document.getElementById('ackForm');
+    const title = document.getElementById('ackModalTitle');
+    const prompt = document.getElementById('ackHazardPrompt');
+    const confPrompt = document.getElementById('ackConfPrompt');
+    const returnToInput = document.getElementById('ackReturnToInput');
+    const noteInput = document.getElementById('resolutionNoteInput');
+    const confirmedSub = document.getElementById('ackConfirmedSub');
+    const submitBtn = document.getElementById('ackSubmitBtn');
+
+    form.action = `/alerts/${alertId}/acknowledge`;
+    if (returnToInput) returnToInput.value = returnTo || '';
+    if (title) title.innerText = 'Review & Resolve Emergency Hazard';
+    prompt.innerHTML = `Resolving Emergency Hazard: <strong>${escapeHtml(alertTitle)}</strong> (Alert #${alertId}).`;
+    confPrompt.innerText = confScore ? `Severity: Critical Emergency (Confidence: ${confScore}%)` : 'Severity: Critical Emergency';
+    if (confirmedSub) confirmedSub.innerText = 'Valid emergency';
+    if (submitBtn) submitBtn.innerText = 'Resolve & Archive';
+    if (noteInput) {
+        noteInput.value = '';
+        noteInput.placeholder = 'e.g., Confirmed fire hazard; extinguished. Or: Hot plate steam triggered false alert.';
+    }
+
+    const confirmedRadio = form.querySelector('input[name="review_status"][value="confirmed"]');
+    if (confirmedRadio) confirmedRadio.checked = true;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAckModal() {
+    const modal = document.getElementById('ackModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function openEvidenceModal(src, hazard, desc, severity, time, classCode, note, confScore, status, reviewer, camCode) {
+    const modal = document.getElementById('evidenceModal');
+    document.getElementById('modalImage').src = src;
+    document.getElementById('modalHazard').innerText = hazard;
+    document.getElementById('modalDesc').innerText = desc || 'Safety compliance infraction recorded.';
+    document.getElementById('modalSeverity').innerText = severity;
+    document.getElementById('modalTime').innerText = time;
+    document.getElementById('modalCamera').innerText = camCode || 'CAM-01';
+    document.getElementById('modalClass').innerText = classCode || 'General';
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function openAckModalFromEl(el) {
+    const d = el.dataset;
+    openAckModal(d.vid || '', d.hazard || '', d.tab || 'current', d.conf || '');
+}
+
+function openHazardAckModalFromEl(el) {
+    const d = el.dataset;
+    openHazardAckModal(d.alertId || '', d.alertTitle || '', d.returnTo || '', d.conf || '');
+}
+
+function openEvidenceModalFromEl(el) {
+    const d = el.dataset;
+    openEvidenceModal(
+        d.src || '',
+        d.hazard || '',
+        d.desc || '',
+        d.severity || '',
+        d.time || '',
+        d.class || '',
+        d.note || '',
+        d.conf || '',
+        d.status || '',
+        d.reviewer || '',
+        d.cam || ''
+    );
+}
+
+function closeEvidenceModal() {
+    const modal = document.getElementById('evidenceModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAckModal();
+        closeEvidenceModal();
+    }
+});
+</script>
+{% endblock %}

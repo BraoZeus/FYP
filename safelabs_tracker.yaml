@@ -1,0 +1,21 @@
+# SAFELABS Optimized ByteTrack Configuration
+# Eliminates track ID explosion and maintains persistent IDs across turns and brief exits
+tracker_type: bytetrack
+
+# High-confidence threshold for primary association
+track_high_thresh: 0.25
+
+# Low-confidence threshold for second-stage association (keeps track through shadow/posture changes)
+track_low_thresh: 0.10
+
+# Minimum confidence required to create a BRAND-NEW track (prevents noise from spawning phantom IDs)
+new_track_thresh: 0.20
+
+# Keep lost tracks alive in Kalman memory for 90 frames (~3.0 seconds at 30 fps)
+track_buffer: 90
+
+# Association IoU match threshold
+match_thresh: 0.70
+
+# Fuse detection confidence with Kalman spatial motion for stable matching
+fuse_score: True

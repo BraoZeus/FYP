@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-[#a1a1aa] bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] px-3 py-1.5 rounded-lg shadow-sm dark:shadow-none transition-colors">
+    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ cameras|length }} Feeds Online</span>
+    <span class="text-zinc-300 dark:text-[#3f3f46]">·</span>
+    <span>{{ active_classes }} Active Courses</span>
+    <span class="text-zinc-300 dark:text-[#3f3f46]">·</span>
+    <span>{{ unacknowledged }} Unreviewed Logs</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Active Lab Context Strip (Top) -->
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg px-4 py-2.5 text-[12px] flex flex-wrap items-center justify-between gap-3 text-zinc-600 dark:text-[#a1a1aa] shadow-sm dark:shadow-none transition-colors">
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1.5">
+                <span class="text-zinc-400 dark:text-[#71717a]">Current Course:</span>
+                {% if ongoing_classes %}
+                <span class="font-medium text-zinc-900 dark:text-[#f4f4f5]">{{ ongoing_classes[0].class_code }} · {{ ongoing_classes[0].class_name }}</span>
+                {% else %}
+                <span class="text-zinc-500 dark:text-[#71717a]">None (Normal Break)</span>
+                {% endif %}
+            </div>
+            <span class="text-zinc-300 dark:text-[#27272a] hidden sm:inline">|</span>
+            <div class="flex items-center gap-1.5">
+                <span class="text-zinc-400 dark:text-[#71717a]">Lab Room:</span>
+                <span class="font-medium text-zinc-900 dark:text-[#f4f4f5]">{% if ongoing_classes %}{{ ongoing_classes[0].lab_room }}{% else %}Lab A{% endif %}</span>
+            </div>
+            <span class="text-zinc-300 dark:text-[#27272a] hidden sm:inline">|</span>
+            <div class="flex items-center gap-1.5">
+                <span class="text-zinc-400 dark:text-[#71717a]">Instructor:</span>
+                <span class="font-medium text-zinc-900 dark:text-[#f4f4f5]">{% if ongoing_classes %}{{ ongoing_classes[0].instructor }}{% else %}Unassigned{% endif %}</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-zinc-400 dark:text-[#71717a]">Active Hazards:</span>
+            {% if recent_alerts %}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 px-2 py-0.5 rounded">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                {{ recent_alerts[0].hazard_type|upper }} ALERT
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                None (Normal)
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Critical Alert Banner if Active -->
+    {% if current_user.role in ['afm','admin'] and recent_alerts %}
+    <div id="criticalAlertBanner" class="h-11 px-4 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-500/40 rounded-lg flex items-center justify-between gap-3 text-xs text-red-900 dark:text-red-200 shadow-sm">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+            <span class="font-bold text-red-600 dark:text-red-400 uppercase tracking-wider shrink-0 text-[11px]">CRITICAL ALERT</span>
+            <span class="text-zinc-400 dark:text-zinc-600">|</span>
+            <span class="truncate font-medium text-zinc-900 dark:text-zinc-200">{{ recent_alerts[0].message }}</span>
+            <span class="text-zinc-500 font-mono text-[11px] shrink-0">{{ recent_alerts[0].timestamp.strftime('%H:%M:%S') if recent_alerts[0].timestamp else '' }}</span>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+            <a href="{{ url_for('violations.violations_list', incident_filter='hazard') }}" class="font-medium text-red-600 dark:text-red-400 hover:underline underline-offset-2">
+                Review ({{ recent_alerts|length }}) →
+            </a>
+            <button type="button" onclick="document.getElementById('criticalAlertBanner').remove()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1" title="Dismiss">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main 60/40 Split View -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <!-- Left Column: Compact 16:9 CAM-01 Preview (60%) -->
+        <div class="lg:col-span-3 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden flex flex-col shadow-sm dark:shadow-none transition-colors">
+            <div class="px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] flex items-center justify-between bg-zinc-50 dark:bg-[#0e0e11]">
+                <div class="flex items-center gap-2">
+                    <span id="feedStatusDot" class="w-2 h-2 rounded-full {% if selected_cam_connected %}bg-[#22c55e]{% else %}bg-[#f59e0b]{% endif %} transition-colors" title="{% if selected_cam_connected %}Streaming (Active){% else %}Offline / Reconnecting{% endif %}"></span>
+                    <h3 class="text-[12px] font-semibold text-zinc-900 dark:text-[#f4f4f5] uppercase tracking-wider">
+                        {% if cameras %}{{ cameras[0].code }} · {{ cameras[0].location }}{% else %}CAM-01 · Lab A{% endif %}
+                    </h3>
+                </div>
+                <a href="{{ url_for('video.live_feed', camera_id=selected_camera_id) }}" class="text-[12px] text-zinc-500 hover:text-zinc-900 dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] transition-colors flex items-center gap-1">
+                    Open in Full Live Feeds
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </a>
+            </div>
+
+            <!-- Flush edge-to-edge 16:9 video canvas with bounding boxes -->
+            <div class="bg-black flex-1 flex items-center justify-center overflow-hidden">
+                <img id="dashLiveFeed"
+                     src="{{ url_for('video.video_feed', camera_id=selected_camera_id) }}"
+                     data-camera-id="{{ selected_camera_id }}"
+                     class="w-full aspect-video object-cover block"
+                     alt="CAM-01 live preview">
+            </div>
+
+            <div class="px-4 py-2 border-t border-zinc-200 dark:border-[#27272a] flex items-center justify-between text-[11px] text-zinc-500 dark:text-[#71717a] font-mono bg-zinc-50 dark:bg-[#0e0e11]">
+                <span>CAM-01 Inference Active | Workbench ROI Polygons Loaded</span>
+                <span class="text-zinc-600 dark:text-[#a1a1aa]">1080P · 30 FPS</span>
+            </div>
+        </div>
+
+        <!-- Right Column: Recent Violations Feed (40%) — STRICTLY 5 RECENT VIOLATIONS -->
+        <div class="lg:col-span-2 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden flex flex-col shadow-sm dark:shadow-none transition-colors">
+            <div class="px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] flex items-center justify-between bg-zinc-50 dark:bg-[#0e0e11]">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-[12px] font-semibold text-zinc-900 dark:text-[#f4f4f5] uppercase tracking-wider">Recent Violations</h3>
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-[#27272a] text-zinc-700 dark:text-zinc-300">5 Recent</span>
+                </div>
+                <a href="{{ url_for('violations.violations_list') }}" class="text-[12px] text-zinc-500 hover:text-zinc-900 dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] transition-colors">
+                    View Log →
+                </a>
+            </div>
+
+            <div class="overflow-y-auto flex-1 divide-y divide-zinc-200 dark:divide-[#27272a]/60">
+                {% for v in recent_violations[:5] %}
+                <div class="px-3.5 py-2.5 hover:bg-zinc-50 dark:hover:bg-[#18181b]/50 transition-colors">
+                    <div class="flex items-center gap-3">
+                        {% if v.image_path %}
+                        <img src="{{ url_for('evidence.serve_evidence', filename=v.image_path) }}" alt="Evidence" class="w-9 h-9 rounded object-cover border border-zinc-200 dark:border-[#27272a] shrink-0">
+                        {% else %}
+                        <div class="w-9 h-9 rounded bg-zinc-100 dark:bg-[#18181b] flex items-center justify-center shrink-0 border border-zinc-200 dark:border-[#27272a] text-zinc-400 dark:text-[#71717a]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[12px] font-medium text-zinc-900 dark:text-[#f4f4f5] truncate">{{ v.hazard_type }}</p>
+                            <!-- Single line metadata: location/bench, course code, and timestamp -->
+                            <p class="text-[11px] text-zinc-500 dark:text-[#71717a] mt-0.5" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <span class="text-zinc-700 dark:text-[#a1a1aa]">{% if v.camera %}{{ v.camera.location }}{% else %}Lab A{% endif %}</span>
+                                <span class="text-zinc-300 dark:text-[#3f3f46]">·</span>
+                                {% if v.class_schedule %}<span class="text-zinc-700 dark:text-[#a1a1aa] font-mono">{{ v.class_schedule.class_code }}</span><span class="text-zinc-300 dark:text-[#3f3f46]">·</span>{% endif %}
+                                <span class="font-mono">{{ v.timestamp.strftime('%d/%m/%y %H:%M') if v.timestamp else '' }}</span>
+                            </p>
+                        </div>
+                        <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-[#18181b] text-zinc-700 dark:text-[#e4e4e7] border border-zinc-200 dark:border-[#3f3f46] shrink-0">
+                            {{ v.severity }}
+                        </span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="px-4 py-12 text-center text-zinc-400 dark:text-[#71717a] text-[12px]">
+                    No safety infractions recorded.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row: Compact Table of Today's Upcoming Lab Timetable -->
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden shadow-sm dark:shadow-none transition-colors">
+        <div class="px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] flex items-center justify-between bg-zinc-50 dark:bg-[#0e0e11]">
+            <h3 class="text-[12px] font-semibold text-zinc-900 dark:text-[#f4f4f5] uppercase tracking-wider">Today's Scheduled Timetable</h3>
+            <a href="{{ url_for('classes.classes_list', tab='timetable') }}" class="text-[12px] text-zinc-500 hover:text-zinc-900 dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] transition-colors">
+                Full Schedule →
+            </a>
+        </div>
+
+        {% if upcoming_classes %}
+        <div class="divide-y divide-zinc-200 dark:divide-[#27272a]/60">
+            <div class="grid grid-cols-12 gap-3 px-4 py-2 text-[11px] font-medium text-zinc-500 dark:text-[#71717a] uppercase tracking-wider bg-zinc-50/80 dark:bg-[#0e0e11]/50 font-mono">
+                <div class="col-span-2">Time Window</div>
+                <div class="col-span-3">Course</div>
+                <div class="col-span-2">Lab Room</div>
+                <div class="col-span-3">Instructor</div>
+                <div class="col-span-2 text-right">Status</div>
+            </div>
+            {% for c in upcoming_classes %}
+            <div class="grid grid-cols-12 gap-3 items-center px-4 py-2.5 text-[12px] hover:bg-zinc-50 dark:hover:bg-[#18181b]/50 transition-colors">
+                <div class="col-span-2 font-mono text-[11px] text-zinc-900 dark:text-[#f4f4f5]">
+                    {{ c.start_time.strftime('%H:%M') }} - {{ c.end_time.strftime('%H:%M') }}
+                </div>
+                <div class="col-span-3 min-w-0">
+                    <span class="font-medium text-zinc-900 dark:text-[#f4f4f5] truncate block">{{ c.class_name }}</span>
+                    <span class="text-[11px] text-zinc-500 dark:text-[#71717a] font-mono">{{ c.class_code }}</span>
+                </div>
+                <div class="col-span-2 text-zinc-600 dark:text-[#a1a1aa] truncate">
+                    {{ c.lab_room }}
+                </div>
+                <div class="col-span-3 text-zinc-600 dark:text-[#a1a1aa] truncate">
+                    {{ c.instructor }}
+                </div>
+                <div class="col-span-2 text-right">
+                    <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] text-zinc-600 dark:text-[#a1a1aa]">
+                        Upcoming
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-4 py-6 text-center text-[12px] text-zinc-400 dark:text-[#71717a]">
+            No further lab sessions scheduled for today.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _dashFeedEl = document.getElementById('dashLiveFeed');
+let currentDashCamId = _dashFeedEl ? (parseInt(_dashFeedEl.getAttribute('data-camera-id'), 10) || 1) : 1;
+
+async function checkFeedStatus(camId) {
+    const dot = document.getElementById('feedStatusDot');
+    if (!dot) return;
+    try {
+        const res = await fetch('/api/camera/' + camId + '/status');
+        if (!res.ok) throw new Error('Status error');
+        const data = await res.json();
+        if (data.connected) {
+            dot.classList.remove('bg-[#f59e0b]');
+            dot.classList.add('bg-[#22c55e]');
+            dot.title = 'Streaming (Active)';
+        } else {
+            dot.classList.remove('bg-[#22c55e]');
+            dot.classList.add('bg-[#f59e0b]');
+            dot.title = 'Offline / Reconnecting';
+        }
+
+        // Live Audio Alert Trigger (Strictly Fire & Smoke hazards only; PPE/contraband violations are silent)
+        if (data.fire_active || data.smoke_active) {
+            if (window.safelabsAudio) {
+                window.safelabsAudio.triggerEmergency('live_' + camId);
+            }
+        }
+    } catch (e) {
+        dot.classList.remove('bg-[#22c55e]');
+        dot.classList.add('bg-[#f59e0b]');
+        dot.title = 'Offline / Reconnecting';
+    }
+}
+
+setInterval(() => {
+    checkFeedStatus(currentDashCamId);
+}, 3000);
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkFeedStatus(currentDashCamId);
+
+    const dashImg = document.getElementById('dashLiveFeed');
+    if (dashImg) {
+        dashImg.onerror = function() {
+            setTimeout(() => {
+                const base = dashImg.src.split('?')[0];
+                dashImg.src = base + '?t=' + new Date().getTime();
+            }, 2000);
+        };
+    }
+});
+</script>
+{% endblock %}

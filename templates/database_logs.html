@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — Database Logs{% endblock %}
+{% block page_title %}Database Logs{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-2 sm:gap-3">
+    <!-- Export CSV -->
+    <a href="{{ url_for('admin.database_logs', export='csv', event_type=current_event_type, search=search_query) }}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-zinc-50 dark:bg-[#121215] dark:hover:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] text-zinc-900 dark:text-[#f4f4f5] text-[12px] font-medium rounded-lg transition-colors shadow-sm"
+       title="Export filtered logs to CSV">
+        <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>Export CSV</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4 max-w-7xl mx-auto">
+
+    <!-- Main Table Container Card -->
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-xl shadow-sm overflow-hidden">
+        
+        <!-- Table Header & Filter Bar -->
+        <div class="px-5 py-4 border-b border-zinc-200 dark:border-[#27272a] flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-semibold text-zinc-900 dark:text-[#f4f4f5] tracking-tight">Database Logging Table</h2>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Strictly Admin Only · Immutable telemetry records & audit trails</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Filter Toggle Button -->
+                <button type="button" 
+                        onclick="toggleFilterBar()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-colors">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                    Filter
+                    {% if current_event_type or search_query %}
+                    <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Collapse Panel -->
+        <div id="filterPanel" class="{% if not (current_event_type or search_query) %}hidden{% endif %} px-5 py-3.5 bg-zinc-50/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-[#27272a]">
+            <form method="GET" action="{{ url_for('admin.database_logs') }}" class="flex flex-wrap items-center gap-3">
+                <!-- Event Type Filter Pills -->
+                <div class="flex items-center gap-1 text-xs">
+                    <span class="text-zinc-500 dark:text-zinc-400 mr-1.5 font-medium">Type:</span>
+                    <a href="{{ url_for('admin.database_logs', search=search_query) }}"
+                       class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors {{ 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' if not current_event_type else 'bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:text-zinc-900' }}">
+                        All ({{ total_logs }})
+                    </a>
+                    <a href="{{ url_for('admin.database_logs', event_type='INFO', search=search_query) }}"
+                       class="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors {{ 'bg-sky-600 text-white' if current_event_type == 'INFO' else 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50' }}">
+                        INFO ({{ info_count }})
+                    </a>
+                    <a href="{{ url_for('admin.database_logs', event_type='WARNING', search=search_query) }}"
+                       class="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors {{ 'bg-amber-600 text-white' if current_event_type == 'WARNING' else 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50' }}">
+                        WARNING ({{ warning_count }})
+                    </a>
+                    <a href="{{ url_for('admin.database_logs', event_type='ERROR', search=search_query) }}"
+                       class="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors {{ 'bg-rose-600 text-white' if current_event_type == 'ERROR' else 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50' }}">
+                        ERROR ({{ error_count }})
+                    </a>
+                </div>
+
+                <!-- Text Search -->
+                <div class="relative flex-1 min-w-[200px]">
+                    <input type="text"
+                           name="search"
+                           value="{{ search_query }}"
+                           placeholder="Search description, user, action..."
+                           class="w-full pl-8 pr-3 py-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-sky-500" />
+                    <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    {% if current_event_type %}
+                    <input type="hidden" name="event_type" value="{{ current_event_type }}" />
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="px-3 py-1 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors">
+                    Search
+                </button>
+                {% if current_event_type or search_query %}
+                <a href="{{ url_for('admin.database_logs') }}" class="px-2.5 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">
+                    Reset
+                </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Table View -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-zinc-200 dark:border-[#27272a] bg-zinc-50/50 dark:bg-[#151518]/60 text-[11px] font-semibold text-zinc-500 dark:text-[#a1a1aa] uppercase tracking-wider">
+                        <th class="py-3 px-5 font-mono">ID</th>
+                        <th class="py-3 px-4">TIMESTAMP</th>
+                        <th class="py-3 px-4">EVENT TYPE</th>
+                        <th class="py-3 px-5">DESCRIPTION</th>
+                        <th class="py-3 px-5 text-right sm:text-left">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200/70 dark:divide-[#27272a]/70 text-xs text-zinc-700 dark:text-zinc-300 font-sans">
+                    {% for log in logs %}
+                    <tr class="hover:bg-zinc-50/80 dark:hover:bg-[#18181b]/50 transition-colors">
+                        <!-- ID -->
+                        <td class="py-3.5 px-5 font-mono text-[12px] font-medium text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                            #{{ "%04d"|format(log.id) }}
+                        </td>
+
+                        <!-- TIMESTAMP (Malaysian Time Format) -->
+                        <td class="py-3.5 px-4 font-mono text-[12px] text-zinc-900 dark:text-zinc-100 whitespace-nowrap" title="{{ log.timestamp.strftime('%d/%m/%Y') if log.timestamp else '' }}">
+                            {{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '--:--:--' }}
+                        </td>
+
+                        <!-- EVENT TYPE (Pill) -->
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            {% set ev = log.event_type or ('ERROR' if not log.success else 'INFO') %}
+                            {% if ev == 'INFO' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wide bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/50">
+                                INFO
+                            </span>
+                            {% elif ev == 'WARNING' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/50">
+                                WARNING
+                            </span>
+                            {% elif ev == 'ERROR' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wide bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/50">
+                                ERROR
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wide bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                {{ ev }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- DESCRIPTION -->
+                        <td class="py-3.5 px-5 text-zinc-800 dark:text-zinc-200 font-medium">
+                            {{ log.details or log.action }}
+                        </td>
+
+                        <!-- STATUS -->
+                        <td class="py-3.5 px-5 text-right sm:text-left whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]"></span>
+                                Logged
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-zinc-400 dark:text-zinc-500 text-xs">
+                            No database log entries match the selected filters.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+        <div class="px-5 py-3.5 border-t border-zinc-200 dark:border-[#27272a] bg-zinc-50/30 dark:bg-[#121215] flex items-center justify-between text-xs text-zinc-500">
+            <div>
+                Showing page {{ pagination.page }} of {{ pagination.pages }} ({{ pagination.total }} total entries)
+            </div>
+            <div class="flex items-center gap-1">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('admin.database_logs', page=pagination.prev_num, event_type=current_event_type, search=search_query) }}"
+                   class="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 transition-colors">
+                    &larr; Previous
+                </a>
+                {% endif %}
+                
+                {% if pagination.has_next %}
+                <a href="{{ url_for('admin.database_logs', page=pagination.next_num, event_type=current_event_type, search=search_query) }}"
+                   class="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 transition-colors">
+                    Next &rarr;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+function toggleFilterBar() {
+    const panel = document.getElementById('filterPanel');
+    if (panel) {
+        panel.classList.toggle('hidden');
+    }
+}
+</script>
+{% endblock %}
+

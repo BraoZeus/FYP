@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — {{ 'Create User' if mode=='create' else 'Edit User' }}{% endblock %}
+{% block page_title %}{{ 'Create New User' if mode=='create' else 'Edit User' }}{% endblock %}
+{% block page_subtitle %}{{ 'Add a new Academic Coordinator or AFM account' if mode=='create' else 'Update account details for ' ~ user.username }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.admin_users') }}"
+   class="text-[12px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">← Back to Users</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg anim-down">
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-6 shadow-sm">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% if mode == 'create' %}
+            <!-- Username -->
+            <div class="mb-5">
+                <label for="username" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+                <input type="text" id="username" name="username" required
+                       value="{{ form_data.get('username','') }}"
+                       class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                       placeholder="e.g. john_doe">
+                <p class="text-[10px] text-slate-500 mt-1">Lowercase letters, numbers, and underscores only. Minimum 3 characters.</p>
+            </div>
+            {% else %}
+            <div class="mb-5">
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+                <p class="text-sm font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 font-mono">{{ user.username }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Full Name -->
+            <div class="mb-5">
+                <label for="full_name" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                <input type="text" id="full_name" name="full_name"
+                       value="{{ form_data.get('full_name', user.full_name or '' if mode=='edit' else '') }}"
+                       class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                       placeholder="e.g. John Doe">
+            </div>
+
+            <!-- Email -->
+            <div class="mb-5">
+                <label for="email" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                <input type="email" id="email" name="email"
+                       value="{{ form_data.get('email', user.email or '' if mode=='edit' else '') }}"
+                       class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                       placeholder="e.g. john@university.edu">
+            </div>
+
+            <!-- Role -->
+            <div class="mb-5">
+                <label for="role" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Role</label>
+                <select id="role" name="role" required
+                        class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all cursor-pointer shadow-inner">
+                    {% for r in roles %}
+                    <option value="{{ r }}"
+                        {% if form_data.get('role', user.role if mode=='edit' else '') == r %}selected{% endif %}>
+                        {{ {'admin':'Administrator','academic_coordinator':'Academic Coordinator','afm':'Admin & Facilities Management Department'}.get(r, r) }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Password -->
+            <div class="mb-5">
+                <label for="password" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    {% if mode == 'create' %}Temporary Password{% else %}Password <span class="normal-case tracking-normal text-slate-500 font-normal">(leave blank to keep current)</span>{% endif %}
+                </label>
+                <input type="password" id="password" name="password" {% if mode=='create' %}required{% endif %}
+                       class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                       placeholder="Min. 8 chars (uppercase, lowercase, number, symbol)">
+                <p class="text-[10px] text-slate-500 mt-1">Must be ≥ 8 characters with at least one uppercase letter, one lowercase letter, one number, and one symbol.{% if mode == 'create' %} User must change it upon first login.{% endif %}</p>
+            </div>
+
+            {% if mode == 'create' %}
+            <!-- Confirm Password -->
+            <div class="mb-5">
+                <label for="confirm_password" class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Confirm Temporary Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required
+                       class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/60 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20 transition-all shadow-inner"
+                       placeholder="Re-enter temporary password">
+            </div>
+            {% endif %}
+
+            {% if mode == 'edit' %}
+            <!-- Force password change toggle -->
+            <div class="mb-5 flex items-center justify-between bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
+                <div>
+                    <p class="text-[13px] font-bold text-slate-900 dark:text-slate-200">Require Password Change</p>
+                    <p class="text-[11px] text-slate-500">Require user to choose a new password on their next login</p>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" name="must_change_password" {% if user.must_change_password %}checked{% endif %}>
+                    <span class="tog-slider"></span>
+                </label>
+            </div>
+
+            <!-- Active toggle -->
+            <div class="mb-6 flex items-center justify-between bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
+                <div>
+                    <p class="text-[13px] font-bold text-slate-900 dark:text-slate-200">Account Active</p>
+                    <p class="text-[11px] text-slate-500">Disabled accounts cannot log in to the portal</p>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" name="is_active" {% if user.is_active_account %}checked{% endif %}>
+                    <span class="tog-slider"></span>
+                </label>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white text-[13px] font-semibold rounded-xl shadow-md shadow-rose-900/20 transition-all active:scale-[.98]">
+                    {{ 'Create User' if mode=='create' else 'Save Changes' }}
+                </button>
+                <a href="{{ url_for('admin.admin_users') }}" class="text-[13px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

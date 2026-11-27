@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}SAFELABS — User Management{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.admin_create_user') }}"
+   class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-[12px] font-medium rounded-lg transition-colors">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    New User
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-3">
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-[#27272a] rounded-lg overflow-hidden shadow-sm dark:shadow-none transition-colors">
+        <!-- Table header -->
+        <div class="grid grid-cols-12 gap-3 px-4 py-2.5 border-b border-zinc-200 dark:border-[#27272a] text-[11px] font-medium text-zinc-500 dark:text-[#71717a] uppercase tracking-wider bg-zinc-50 dark:bg-[#0e0e11]">
+            <div class="col-span-3">User</div>
+            <div class="col-span-2">Role</div>
+            <div class="col-span-2">Email</div>
+            <div class="col-span-2">Status</div>
+            <div class="col-span-1">Created</div>
+            <div class="col-span-2 text-right">Actions</div>
+        </div>
+
+        {% for u in users %}
+        <div class="grid grid-cols-12 gap-3 items-center px-4 py-3 border-b border-zinc-200 dark:border-[#27272a]/60 last:border-b-0 hover:bg-zinc-50 dark:hover:bg-[#18181b]/50 transition-colors text-[12px]">
+            <!-- User info -->
+            <div class="col-span-3 flex items-center gap-2.5 min-w-0">
+                <div class="w-7 h-7 rounded bg-zinc-100 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a] flex items-center justify-center text-[11px] font-mono font-medium text-zinc-800 dark:text-[#f4f4f5] shrink-0">
+                    {{ u.username[0]|upper }}
+                </div>
+                <div class="min-w-0">
+                    <p class="font-medium text-zinc-900 dark:text-[#f4f4f5] truncate">{{ u.full_name or u.username }}</p>
+                    <p class="text-[11px] text-zinc-500 dark:text-[#71717a] font-mono">{{ u.username }}</p>
+                </div>
+            </div>
+
+            <!-- Role badge -->
+            <div class="col-span-2">
+                {% if u.role == 'admin' %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-900/50">ADMIN</span>
+                {% elif u.role == 'afm' %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">AFM</span>
+                {% elif u.role == 'academic_coordinator' %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">ACADEMIC COORD</span>
+                {% else %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">{{ u.role|upper }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="col-span-2 text-zinc-600 dark:text-[#a1a1aa] truncate text-[11px]">
+                {{ u.email or '-' }}
+            </div>
+
+            <!-- Status -->
+            <div class="col-span-2 flex flex-col items-start gap-1">
+                {% if u.is_active_account %}
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Active
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-[#71717a]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-[#71717a]"></span>
+                    Disabled
+                </span>
+                {% endif %}
+
+                {% if u.is_locked() %}
+                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    LOCKED
+                </span>
+                {% endif %}
+
+                {% if u.must_change_password %}
+                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-semibold font-mono tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    PW RESET REQ
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Created -->
+            <div class="col-span-1">
+                <p class="text-[11px] text-zinc-500 dark:text-[#71717a] font-mono tabular-nums">{{ u.created_at.strftime('%d/%m/%y') if u.created_at else '-' }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-span-2 flex items-center justify-end gap-2">
+                {% if u.is_locked() %}
+                <form method="POST" action="{{ url_for('admin.admin_unlock_user', user_id=u.id) }}" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors">
+                        Unlock
+                    </button>
+                </form>
+                {% endif %}
+
+                <a href="{{ url_for('admin.admin_edit_user', user_id=u.id) }}"
+                   class="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] transition-colors">Edit</a>
+
+                {% if u.id != current_user.id %}
+                <button type="button" onclick="openResetPasswordModal('{{ u.id }}', '{{ u.username }}')"
+                        class="text-[11px] font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors">
+                    Reset
+                </button>
+
+                <form method="POST" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="button" onclick="showDeleteModal(this.form, '{{ u.username }}', 'user account')"
+                            class="text-[11px] font-medium text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition-colors">Delete</button>
+                </form>
+                {% else %}
+                <span class="text-[11px] text-zinc-400 dark:text-[#71717a] italic">You</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <p class="text-[11px] text-zinc-400 dark:text-[#71717a] font-mono tabular-nums">{{ users|length }} user account{{ 's' if users|length != 1 }} active</p>
+</div>
+
+<!-- Reset Temporary Password Modal -->
+<div id="resetPwModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+        <div class="flex items-center gap-2 mb-2">
+            <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+            </div>
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Reset Temporary Password
+            </h3>
+        </div>
+        <p class="text-[12px] text-zinc-600 dark:text-zinc-400">
+            Issue a temporary password for <span id="resetModalUsername" class="font-mono font-semibold text-zinc-900 dark:text-zinc-200"></span>.
+        </p>
+        <p class="text-[11px] text-zinc-500 dark:text-zinc-400/90 mt-1">
+            Specify a temporary password below (min. 8 chars with uppercase, lowercase, number, and symbol), or leave blank to auto-generate a compliant key. The user will be required to change it immediately upon their next login.
+        </p>
+
+        <form id="resetPwForm" method="POST" action="" class="mt-4 space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label for="temp_password" class="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-1">Temporary Password</label>
+                <input type="text" id="temp_password" name="temp_password"
+                       placeholder="Leave blank to auto-generate"
+                       class="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono outline-none focus:border-amber-500">
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onclick="closeResetPasswordModal()"
+                        class="px-3 py-1.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[12px] font-semibold rounded-lg shadow-sm transition-all">
+                    Reset & Issue
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openResetPasswordModal(userId, username) {
+    const modal = document.getElementById('resetPwModal');
+    const form = document.getElementById('resetPwForm');
+    const uname = document.getElementById('resetModalUsername');
+    form.action = `/users/${userId}/reset_password`;
+    uname.textContent = username;
+    document.getElementById('temp_password').value = '';
+    modal.classList.remove('hidden');
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPwModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

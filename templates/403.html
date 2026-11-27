@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}403 Forbidden — SAFELABS{% endblock %}
+{% block page_title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center py-20 text-center px-4">
+    <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 shadow-sm">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+    </div>
+    <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+        403 Forbidden — Insufficient Permissions
+    </h3>
+    <p class="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mb-6">
+        Your current role does not have authorization to access this resource or perform this action.
+    </p>
+    {% if current_user.is_authenticated and current_user.role == 'academic_coordinator' %}
+    <a href="{{ url_for('classes.classes_list') }}"
+       class="px-4 py-2 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 transition-colors shadow-sm">
+        Return to Class Schedule
+    </a>
+    {% else %}
+    <a href="{{ url_for('main.dashboard') }}"
+       class="px-4 py-2 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 transition-colors shadow-sm">
+        Return to Dashboard
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
