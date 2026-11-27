@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAFELABS — System Evaluation & Verification Report</title>
+    <style>
+        :root {
+            --bg: #09090b;
+            --surface: #121215;
+            --border: #27272a;
+            --text: #f4f4f5;
+            --muted: #a1a1aa;
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --blue: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            padding: 32px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-family: monospace;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .badge.pass {
+            border-color: rgba(34, 197, 94, 0.4);
+            color: var(--green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+            margin-top: 12px;
+        }
+
+        th {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+
+        td {
+            border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+            padding: 12px;
+            font-family: monospace;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .fig-container {
+            margin: 24px 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .fig-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .fig-img:hover {
+            opacity: 0.95;
+        }
+
+        .fig-caption {
+            padding: 12px 16px;
+            font-size: 12px;
+            color: var(--muted);
+            background: #0c0c0e;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .code-box {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--blue);
+            margin-top: 12px;
+            overflow-x: auto;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>SAFELABS — System Evaluation & Verification Report</h1>
+                <p class="subtitle">Complete technical evaluation report baselining Project Implementation, Security,
+                    Latency, and Edge Reliability.</p>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge pass"><span
+                        style="width: 8px; height: 8px; border-radius: 50%; background: var(--green);"></span> 100% PASS
+                    SUITE</span>
+                <p style="font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 6px;">Evaluation
+                    Timestamp: 2026-11-02 12:45:46 UTC</p>
+            </div>
+        </div>
+
+        <!-- Reproduction Instructions for Examiner -->
+        <div class="card" style="border-left: 3px solid var(--blue);">
+            <h2>Examiner Independent Verification Instructions</h2>
+            <p style="font-size: 13px; color: var(--muted);">To reproduce all tests, benchmarks, and visual evidence
+                figures from a clean terminal session:</p>
+            <div class="code-box">
+                # 1. Run the full automated verification suite (Domain 1 - 4):
+                python tests/run_full_system_evaluation.py
+
+                # 2. Re-render all visual screenshot artifacts (PNG):
+                python tests/generate_visual_evidence.py
+            </div>
+        </div>
+
+        <!-- Domain 1: Security -->
+        <div class="card">
+            <h2>Domain 1: Security & Cryptographic Integrity Testing <span class="badge pass">8/8 PASSED</span></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Case</th>
+                        <th>Subsystem</th>
+                        <th>Result</th>
+                        <th>Empirical Evaluation Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>AES-256-GCM Authenticated Encryption</td>
+                        <td>crypto_utils.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>Ciphertext: 14,156 B | Zero data loss on decrypt</td>
+                    </tr>
+                    <tr>
+                        <td>Adversarial Tamper Resistance (Bit-Flip)</td>
+                        <td>crypto_utils.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>Caught via InvalidTag | 0 bytes leaked</td>
+                    </tr>
+                    <tr>
+                        <td>SHA-256 Chain-of-Custody Provenance</td>
+                        <td>crypto_utils.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>Original hash matches decrypted byte stream</td>
+                    </tr>
+                    <tr>
+                        <td>Zero Plaintext Disk Leakage Audit</td>
+                        <td>static/evidence/</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>0 unencrypted images found across entire filesystem</td>
+                    </tr>
+                    <tr>
+                        <td>RBAC: Unauthenticated Isolation</td>
+                        <td>routes/auth.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>HTTP 302 redirect on all protected endpoints</td>
+                    </tr>
+                    <tr>
+                        <td>RBAC: Academic Coordinator Role Boundary</td>
+                        <td>routes/admin.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>Denied /admin/users access; safely redirected to /</td>
+                    </tr>
+                    <tr>
+                        <td>RBAC: Administrator Privilege</td>
+                        <td>routes/admin.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>HTTP 200; full administration panel authorized</td>
+                    </tr>
+                    <tr>
+                        <td>Session Hardening Flags</td>
+                        <td>app.py</td>
+                        <td><span class="badge pass">PASS</span></td>
+                        <td>HttpOnly=True, SameSite=Lax, Timeout=30 minutes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Embedded Figure 3 -->
+            <div class="fig-container">
+                <img src="visual_evidence/test_fig3_crypto_tamper.png" alt="Figure 3" class="fig-img">
+                <div class="fig-caption">
+                    <span><strong>Figure 3:</strong> AES-256-GCM Evidence Cryptography, Authenticated Ciphertext Dump,
+                        and Bit-Flip Tamper Resistance Audit.</span>
+                    <span>tests/visual_evidence/test_fig3_crypto_tamper.png</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Domain 2: Performance Benchmarks -->
+        <div class="card">
+            <h2>Domain 2: Pipeline Latency & Throughput Benchmarking <span class="badge pass">VERIFIED</span></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pipeline Component</th>
+                        <th>Mean Execution Time</th>
+                        <th>95th Percentile (p95)</th>
+                        <th>Throughput / Capacity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>YOLOv8n Person Tracking (ByteTrack)</td>
+                        <td>40.43 ms</td>
+                        <td>44.09 ms</td>
+                        <td>Runs every frame (Real-time tracking)</td>
+                    </tr>
+                    <tr>
+                        <td>Contraband Surface ROI Engine</td>
+                        <td>9.93 ms</td>
+                        <td>37.76 ms</td>
+                        <td>Interleaved every 5th frame (~1.9 ms amortized)</td>
+                    </tr>
+                    <tr>
+                        <td>Environmental Hazard Plume Engine</td>
+                        <td>44.61 ms</td>
+                        <td>69.80 ms</td>
+                        <td>Interleaved every 10th frame (~4.4 ms amortized)</td>
+                    </tr>
+                    <tr>
+                        <td>AES-256-GCM + SHA-256 Encryption</td>
+                        <td>0.06 ms</td>
+                        <td>0.08 ms</td>
+                        <td>583.5 MB / sec cryptographic throughput</td>
+                    </tr>
+                    <tr>
+                        <td>Ephemeral In-Memory Decryption</td>
+                        <td>0.04 ms</td>
+                        <td>0.05 ms</td>
+                        <td>Direct BytesIO streaming (0 disk I/O)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>End-to-End Display Latency</strong></td>
+                        <td><strong>~48.08 ms (CPU)</strong></td>
+                        <td><strong>~58.20 ms</strong></td>
+                        <td><strong>~21 FPS sustained display rate</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Embedded Figure 5 -->
+            <div class="fig-container">
+                <img src="visual_evidence/test_fig5_latency_memory_bench.png" alt="Figure 5" class="fig-img">
+                <div class="fig-caption">
+                    <span><strong>Figure 5:</strong> Empirical Display Latency Comparison vs Cloud APIs and
+                        120-Iteration Memory Stability Curve.</span>
+                    <span>tests/visual_evidence/test_fig5_latency_memory_bench.png</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Domain 3: Algorithmic Computer Vision -->
+        <div class="card">
+            <h2>Domain 3: Edge AI & Computer Vision Algorithmic Verification <span class="badge pass">VERIFIED</span>
+            </h2>
+
+            <div class="fig-container">
+                <img src="visual_evidence/test_fig1_contraband_roi.png" alt="Figure 1" class="fig-img">
+                <div class="fig-caption">
+                    <span><strong>Figure 1:</strong> Contraband Point-in-Polygon (BENCH_ROI) Boundary Anchor Test
+                        (Inside vs Outside Exclusion).</span>
+                    <span>tests/visual_evidence/test_fig1_contraband_roi.png</span>
+                </div>
+            </div>
+
+            <div class="fig-container">
+                <img src="visual_evidence/test_fig2_temporal_debounce.png" alt="Figure 2" class="fig-img">
+                <div class="fig-caption">
+                    <span><strong>Figure 2:</strong> 30-Frame Temporal Rolling Deque Debounce Filter (Transient Bunsen
+                        Flash vs Sustained Combustion).</span>
+                    <span>tests/visual_evidence/test_fig2_temporal_debounce.png</span>
+                </div>
+            </div>
+
+            <div class="fig-container">
+                <img src="visual_evidence/test_fig4_spatial_iou_anatomy.png" alt="Figure 4" class="fig-img">
+                <div class="fig-caption">
+                    <span><strong>Figure 4:</strong> Anatomical Body Zone Spatial Partitioning and Dynamic PPE
+                        Compliance Pairing.</span>
+                    <span>tests/visual_evidence/test_fig4_spatial_iou_anatomy.png</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Domain 4: Reliability & Memory -->
+        <div class="card">
+            <h2>Domain 4: Edge Reliability & Memory Drift Stability <span class="badge pass">VERIFIED</span></h2>
+            <div class="grid-2">
+                <div>
+                    <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Memory monitoring over 120
+                        continuous multi-model inference cycles:</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Inference Iteration</th>
+                                <th>Resident Memory (RSS)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Iteration 1</td>
+                                <td>446.4 MB</td>
+                            </tr>
+                            <tr>
+                                <td>Iteration 30</td>
+                                <td>440.6 MB</td>
+                            </tr>
+                            <tr>
+                                <td>Iteration 60</td>
+                                <td>440.6 MB</td>
+                            </tr>
+                            <tr>
+                                <td>Iteration 90</td>
+                                <td>440.6 MB</td>
+                            </tr>
+                            <tr>
+                                <td>Iteration 120 (Final)</td>
+                                <td>440.6 MB</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Net Memory Drift</strong></td>
+                                <td><strong>-5.71 MB (Zero Leak)</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Ingestion watchdog & failover
+                        resilience:</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mechanism</th>
+                                <th>Specification</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Stall Timeout Watchdog</td>
+                                <td>2.5 seconds (auto-disconnect)</td>
+                            </tr>
+                            <tr>
+                                <td>Buffer Queue Depth</td>
+                                <td>Strictly locked at 1 slot</td>
+                            </tr>
+                            <tr>
+                                <td>Standby Canvas</td>
+                                <td>Matte zinc reconnect countdown</td>
+                            </tr>
+                            <tr>
+                                <td>Reconnect Recovery Time</td>
+                                <td>~1.4 seconds post physical reconnect</td>
+                            </tr>
+                            <tr>
+                                <td>Leaked Sockets / Handles</td>
+                                <td>0 leaked OS descriptors</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

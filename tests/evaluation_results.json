@@ -1,0 +1,45 @@
+{
+  "timestamp": 1795590571.7109945,
+  "active_backend": "hybrid",
+  "security": {
+    "aes_roundtrip": true,
+    "tamper_resistance": true,
+    "sha256_provenance": true,
+    "zero_plaintext_leak": true,
+    "rbac_unauthenticated": true,
+    "rbac_academic_coordinator": true,
+    "rbac_admin_authorized": true,
+    "session_hardening": true,
+    "retention_30d_purge": true
+  },
+  "performance": {
+    "person_tracking_ms": {
+      "mean": 11.338500011091432,
+      "p95": 11.582659929990768
+    },
+    "contraband_ms": {
+      "mean": 9.305206670736274,
+      "p95": 40.745109959971074
+    },
+    "hazard_engine_ms": {
+      "mean": 20.31396000335614,
+      "p95": 44.92485005175687
+    },
+    "crypto_enc_ms": 0.04460001364350319,
+    "crypto_dec_ms": 0.016353318157295387,
+    "crypto_throughput_mb_s": 801.3427746304467,
+    "end_to_end_latency_ms": 16.4309373455743,
+    "sustained_fps": 30.0
+  },
+  "algorithmic": {
+    "polygon_roi_test": true,
+    "temporal_debounce": true,
+    "iou_accuracy": true
+  },
+  "reliability": {
+    "memory_drift_mb": -9.21484375,
+    "memory_drift_ok": true,
+    "watchdog_configured": true
+  },
+  "duration_seconds": 6.671275615692139
+}
