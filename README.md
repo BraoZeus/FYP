@@ -2,7 +2,7 @@
 
 **An Automated Computer Vision Pipeline for Safety Compliance and Prohibited Item Detection in Academic Laboratories**
 
-SAFELABS is an edge-deployed, web-based laboratory safety monitoring platform built with Flask, OpenCV, PyTorch, and Ultralytics YOLOv8. It continuously analyzes closed-circuit television (CCTV) RTSP feeds in real time to verify mandatory personal protective equipment (PPE), detect prohibited items on chemical workbenches, and trigger immediate fire and smoke emergency alerts—while enforcing privacy-by-design with encrypted evidence storage and role-based access control.
+SAFELABS is an edge-deployed, web-based laboratory safety monitoring platform built with Flask, OpenCV, PyTorch, and Ultralytics YOLOv8. It continuously analyzes closed-circuit television (CCTV) RTSP feeds in real time to verify mandatory personal protective equipment (PPE), detect prohibited items on chemical workbenches, and trigger immediate fire and smoke emergency alerts while enforcing privacy-by-design with encrypted evidence storage and role-based access control.
 
 ---
 
@@ -87,7 +87,7 @@ SAFELABS/
 ### 1. Clone the Repository & Create a Virtual Environment
 ```bash
 git clone <repository-url>
-cd SAFELABS
+cd FYP
 python -m venv venv
 ```
 
